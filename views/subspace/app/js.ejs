@@ -1,0 +1,46 @@
+<script>
+    let app = new Vue({
+        el: "#app",
+        data: {
+            <% if (locals.jsData){ %><%- jsData.data %><% } %>
+        },
+        methods: {
+            openCropper: function (afterLoad, cropperOptions = {onlyShow: false, options: {}}) {
+                this.$refs.cropper.openModal(afterLoad, cropperOptions);
+            },
+            onTopButtonClick: function (item, componentId) {
+                this.$refs[componentId + 'Modal'][0].openModal(item);
+            },
+            clickedItem: function (item, componentId) {
+                this.$refs[componentId + 'Editor'][0].openModal(item);
+            },
+            handleSave: function () {
+                this.reloadData();
+            },
+            reloadData: function () {
+                for (let i = 0; i < this.components.length; i++) {
+                    if (this.components[i].type === "table") {
+                        this.$refs[this.components[i].id][0].loadData();
+                    }
+                }
+            },
+            handleDialogAction: function () {
+                this.reloadData();
+            },
+            loadTestData: () => {
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+            })
+        },
+        components: {
+            cropperComponent: cropperComponent,
+            modalComponent: modalComponent,
+            editorComponent: editorComponent,
+            navbarApp: navbarApp,
+            tableHeaderApp: tableHeaderApp,
+            tableComponent: tableComponent,
+            footerApp: footerApp,
+        },
+    });
+</script>

@@ -1,0 +1,77 @@
+<script>
+    let services = new Vue({
+        el: "#services",
+        data: {
+            title: "Negative",
+            query_item: "whatsub_user_wallet",
+            query: `query getNegativeBalance {
+                      whatsub_user_wallet(where: {}, order_by: {total_amount: asc}) {
+                        total_amount
+                        auth {
+                          fullname
+                          phone
+                        }
+                      }
+                    }`,
+            heads: [
+                {
+                    key: "fullname",
+                    name: "Name",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    nested_key: ["auth", "fullname"]
+                },
+                {
+                    key: "Phone",
+                    name: "Phone",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    nested_key: ["auth", "phone"],
+                    isPrimaryKey: true
+                },
+                {
+                    key: "total_amount",
+                    name: "Total Amount",
+                    type: "number",
+                    search_text: "",
+                    showInList: true
+                }
+            ],
+            filters: [
+                // {
+                //     key: "id",
+                //     match_type: "_eq",
+                //     data_type: "string"
+                // }
+            ],
+            mutation: ``,
+            mutation_item: "",
+            env: "<% if (locals.env){ %><%- env %><% } %>"
+        },
+        methods: {
+            clickedItem: function (item) {
+                // console.log(item);
+                // this.$refs.editorComponent.openModal(item);
+            },
+            handleSave: function () {
+                this.$refs.tableComponent.loadData();
+            },
+            loadTestData: () => {
+                // auth.phone = auth.env !=='prod'?"9435840783":"";
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+        },
+    });
+</script>

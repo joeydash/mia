@@ -1,0 +1,25 @@
+<script>
+    let services = new Vue({
+        el: "#services",
+        data: {
+            title: "Home",
+            env: "<% if (locals.env){ %><%- env %><% } %>"
+        },
+        methods: {
+            loadTestData: () => {
+                // auth.phone = auth.env !=='prod'?"9435840783":"";
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+        },
+    });
+</script>

@@ -1,0 +1,121 @@
+<script>
+    let services = new Vue({
+        el: "#services",
+        data: {
+            title: "Wallet",
+            query_item: "whatsub_wallet",
+            query: `query MyQuery {
+                      whatsub_wallet(order_by: {created_at: desc}) {
+                        id
+                        amount
+                        created_at
+                        auth {
+                          fullname
+                          email
+                          phone
+                        }
+                        purpose
+                        payment_id
+                      }
+                    }`,
+            heads: [
+                {
+                    key: "id",
+                    name: "Id",
+                    type: "string",
+                    search_text: "",
+                    isPrimaryKey: true
+                },
+                {
+                    key: "fullname",
+                    name: "Name",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    nested_key: ["auth", "fullname"]
+                },
+                {
+                    key: "Phone",
+                    name: "Phone",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    nested_key: ["auth", "phone"]
+                },
+                {
+                    key: "Email",
+                    name: "Email",
+                    type: "string",
+                    search_text: "",
+                    nested_key: ["auth", "email"]
+                },
+                {
+                    key: "amount",
+                    name: "Amount",
+                    type: "string",
+                    search_text: "",
+                    showInList: true
+                },
+                {
+                    key: "purpose",
+                    name: "Purpose",
+                    type: "string",
+                    search_text: "",
+                    showInList: true
+                },
+                {
+                    key: "created_at",
+                    name: "Created At",
+                    type: "time",
+                    timeFormat: "h:mm a, DD/MM/YY",
+                    // timeFormat: "'h:mm a, Do MMM YYYY'",
+                    search_text: "",
+                    showInList: true,
+                },
+                {
+                    key: "payment_id",
+                    name: "payment Id",
+                    type: "string",
+                    search_text: "",
+                }
+            ],
+            filters: [
+                // {
+                //     key: "id",
+                //     match_type: "_eq",
+                //     data_type: "string"
+                // }
+            ],
+            mutation: `mutation MyMutation($room_id: uuid = "", $limit: Int = 10, $is_verified: Boolean = false, $is_public: Boolean = false, $status: String = "") {
+                          update_whatsub_rooms(where: {id: {_eq: $room_id}}, _set: {is_verified: $is_verified, is_public: $is_public, status: $status, limit: $limit}) {
+                            affected_rows
+                          }
+                        }`,
+            mutation_item: "update_whatsub_rooms",
+            env: "<% if (locals.env){ %><%- env %><% } %>"
+        },
+        methods: {
+            clickedItem: function (item) {
+                // console.log(item);
+                this.$refs.editorComponent.openModal(item);
+            },
+            handleSave: function () {
+                // this.$refs.tableComponent.loadData();
+            },
+            loadTestData: () => {
+                // auth.phone = auth.env !=='prod'?"9435840783":"";
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+        },
+    });
+</script>

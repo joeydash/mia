@@ -1,0 +1,27 @@
+<% include css.ejs %>
+<div id="app">
+    <cropper-component ref="cropper"></cropper-component>
+    <navbar-app @reload-data="reloadData"></navbar-app>
+    <!--    <table-header-app :title="title"></table-header-app>-->
+
+    <div v-for="component in components">
+        <modal-component v-if="component.type=='table' && component.top_buttons && component.top_buttons.length>0"
+                         @handle-dialog-action="handleDialogAction"
+                         :ref="component.id+'Modal'"
+                         :component_id="component.id+'Modal'" @handle-open-cropper="openCropper"></modal-component>
+        <editor-component v-if="component.type=='table'" :title="component.title" :heads="component.heads"
+                          :save_actions="component.saveActions" :dialog_actions="component.dialogActions"
+                          @handle-save="handleSave" @handle-dialog-action="handleDialogAction"
+                          :ref="component.id+'Editor'"
+                          :component_id="component.id+'Editor'" @handle-open-cropper="openCropper"></editor-component>
+        <table-component v-if="component.type=='table'" :title="component.title" :top_buttons="component.top_buttons"
+                         :query="component.query"
+                         :query_item="component.query_item" :heads="component.heads" :filters="component.filters"
+                         :sorts="component.sorts"
+                         :ref="component.id" :component_id="component.id"
+                         @clicked-item="clickedItem" @top-button-click="onTopButtonClick"></table-component>
+    </div>
+
+    <footer-app></footer-app>
+</div>
+<% include js.ejs %>

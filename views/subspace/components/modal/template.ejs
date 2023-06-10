@@ -1,0 +1,80 @@
+<div class="container">
+    <div class="modal fade" id="modalModal" tabindex="-1" aria-labelledby="modalModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalModalLabel"><b>{{topButtonData.name}}</b></h5>
+                    <button type="button" class="btn-close" aria-label="Close" @click="closeModal" v-if="!isLoading"></button>
+                    <div class="spinner-grow text-dark" role="status" v-if="isLoading">
+                        <span class="sr-only"></span>
+                    </div>
+                </div>
+                <div class="modal-body" style="overflow-y: auto;max-height: 80vh;">
+                    <div @keyup.enter="handleSave">
+                        <div class="mb-3" v-for="head in topButtonData.input">
+                            <label :for="head.key" class="form-label">{{head.name}}</label>
+                            <input type="text" class="form-control" :id="head.key"
+                                   aria-describedby="emailHelp"
+                                   v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.type!=='boolean' && head.canEdit"
+                                   v-model="item[head.key]" :placeholder="head.placeholder">
+                            <input type="text" class="form-control" :id="head.key"
+                                   aria-describedby="emailHelp"
+                                   v-if="!head.canEdit && head.type!=='object' && head.type!=='text' && head.type!=='boolean'"
+                                   v-model="item[head.key]" :placeholder="head.placeholder" readonly>
+
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="uploadImage(head, item[head.key])">Upload
+                                Image
+                            </button>
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="uploadImage(head, item[head.key], true)">Upload From URL
+                            </button>
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="openImage(head, item[head.key])">Show Image
+                            </button>
+
+                            <textarea v-if="head.type==='object'" class="form-control" rows="10"
+                                      :aria-label="jsonStringify(item[head.key])"
+                                      readonly>{{jsonStringify(item[head.key])}}</textarea>
+                            <textarea v-if="!head.canEdit  && head.type==='text'" v-model="item[head.key]" rows="10"
+                                      class="form-control"
+                                      :aria-label="jsonStringify(item[head.key])"
+                                      readonly>{{jsonStringify(item[head.key])}}</textarea>
+                            <textarea v-if="head.canEdit  && head.type==='text'" v-model="item[head.key]" rows="10"
+                                      class="form-control"
+                                      :aria-label="jsonStringify(item[head.key])"
+                                      :placeholder="head.placeholder"></textarea>
+
+
+                            <select class="form-select" aria-label="Default select example"
+                                    v-if="(head.type==='option' || head.type==='boolean') && head.canEdit"
+                                    v-model="item[head.key]">
+                                <option selected disabled>Select {{head.name}}</option>
+                                <option v-if="head.loadOptionsFrom" v-for="option in head.loadOptionsFrom"
+                                        :value="option">{{option}}
+                                </option>
+                                <option v-if="head.loadOptionsFromObjects" v-for="option in head.loadOptionsFromObjects"
+                                        :value="option.value">{{option.name}}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div v-if="topButtonData.body" v-html="topButtonData.body"></div>
+                </div>
+                <div class="modal-footer">
+                    <button v-for="dialog_action in topButtonData.dialogActions" type="button" class="btn btn-secondary"
+                            :class="'btn-'+dialog_action.buttonType" @click="handleDialogAction(dialog_action)"
+                            :disabled='isLoading'>
+                        {{dialog_action.name}}
+                    </button>
+                    <button type="button" class="btn btn-secondary" @click="closeModal" :disabled='isLoading'>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

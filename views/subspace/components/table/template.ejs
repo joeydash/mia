@@ -1,0 +1,79 @@
+<div class="container">
+    <div style="display: flex; justify-content: flex-end;margin-bottom: 10px;">
+        <button v-if="top_buttons" v-for="tb in top_buttons" type="button" class="btn" :class="'btn-'+tb.buttonType"
+                style="margin-right: 4px;" @click="onTopButtonClick(tb)">
+            {{tb.name}}
+        </button>
+<!--        <button type="button" class="btn btn-dark" style="" @click="downloadXlSX">Download Excel</button>-->
+    </div>
+    <div class="table-responsive card">
+        <table class="table table-hover">
+            <thead class="table-dark">
+            <tr>
+                <th scope="col" v-for="head in heads" v-if="head.showInList" style="cursor: pointer;"
+                    @click="addSort(head)">{{head.name}} <span
+                            v-if="getWhetherSorted(head.key)==='asc'">&#9650;</span><span
+                            v-if="getWhetherSorted(head.key)==='desc'">&#9660;</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <th scope="row" v-for="head in heads" v-if="head.showInList">
+                    <input type="text" class="form-control"
+                           v-if="head.type==='string' || head.type==='uuid' || head.type==='number'"
+                           :placeholder="head.name"
+                           aria-label=""
+                           aria-describedby="basic-addon2" @keyup="addFilterChar($event, head)">
+                    <select class="form-select" aria-label="Default select example"
+                            v-if="head.type==='option' || head.type==='boolean'"
+                            @change="addFilterChar($event, head)">
+                        <option value="" selected>All</option>
+                        <option v-for="option in _.uniqBy(fullData, head.key)" :value="option[head.key]">
+                            {{makeHead(option[head.key])}}
+                        </option>
+                    </select>
+                </th>
+            </tr>
+            <tr v-if="isLoading" v-for="i in _.range(100)">
+                <td v-for="head in heads" v-if="head.showInList">
+                    <div class="box" style="height: 2vw;"></div>
+                </td>
+            </tr>
+            <tr style="cursor: pointer;" v-for="item in data" @click="clickedItem(item)">
+                <td scope="row" v-for="head in heads" v-if="head.showInList"
+                    v-html="get_link(item, head)"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="row" style="margin: 20px;">
+        <div class="col-3" v-if="showLimitOffset">
+            <button type="button" class="btn btn-dark" @click="buttonPrevNext(-1)"
+                    :disabled="offset<=0">Prev
+            </button>
+        </div>
+        <div class="col-3">{{offset}}-{{offset+data.length}} ({{data.length}} Items)</div>
+        <div class="col-3" v-if="showLimitOffset">
+            <select class="form-select" aria-label="Default select example" v-model="limit"
+                    @change="onLimitButtonChange">
+                <option selected>Select Rows</option>
+                <option value="10">10 Rows</option>
+                <option value="25">25 Rows</option>
+                <option value="50">50 Rows</option>
+                <option value="100">100 Rows</option>
+<!--                <option value="200">200 Rows</option>-->
+<!--                <option value="500">500 Rows</option>-->
+<!--                <option value="1000">1000 Rows</option>-->
+<!--                <option value="5000">5000 Rows</option>-->
+<!--                <option value="10000">10000 Rows</option>-->
+<!--                <option value="50000">50000 Rows</option>-->
+<!--                <option value="100000">100000 Rows</option>-->
+            </select>
+        </div>
+        <div class="col-3" v-if="showLimitOffset">
+            <button type="button" class="btn btn-dark float-end"
+                    @click="buttonPrevNext(1)">Next
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,87 @@
+<div id="auth" class="row justify-content-center">
+    <div class="card " style="width: 18rem;margin-top: 100px;">
+        <center>
+            <img style="max-width: 80px;margin-top: 50px;margin-bottom: 50px;"
+                 src="https://res.cloudinary.com/joeydash/image/upload/v1643696741/subspace/subspace-logo-black-bg.png"
+                 class="card-img-top" alt="...">
+        </center>
+        <div class="card-body">
+            <form>
+                <div class="mb-3" v-if="!is_send_otp">
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="text" class="form-control" id="phone" aria-describedby="phone" v-model="phone">
+                </div>
+                <div class="mb-3" v-if="is_send_otp">
+                    <label for="otp" class="form-label">OTP</label>
+                    <input type="text" class="form-control" id="otp" aria-describedby="otp" v-model="otp">
+                </div>
+                <div class="d-grid gap-2" >
+                    <button class="btn btn-primary" type="button" v-if="!is_send_otp" @click="getOTP">Send OTP</button>
+                    <button class="btn btn-primary" type="button" v-if="is_send_otp" @click="verifyOTP">Verify OTP</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let auth = new Vue({
+        el: "#auth",
+        data: {
+            env: "<% if (locals.env){ %><%- env %><% } %>",
+            is_send_otp: false,
+            phone: "",
+            otp: ""
+        },
+        methods: {
+            loadTestData : ()=>{
+                auth.phone = auth.env !=='prod'?"9435840783":"";
+                auth.otp = auth.env !=='prod'?"123456":"";
+            },
+            getOTP: async ()=>{
+                if (!auth.phone.match( /^\d{10}$/)) {
+                    alertify.error("Phone number not proper Eg: 9876543210");
+                }else{
+
+                    let resp = await g90Client(`mutation MyMutation($phone: String = "") {
+                              register_without_password(credentials: {phone: $phone}) {
+                                request_id
+                                type
+                              }
+                            }`,{
+                        phone: auth.phone
+                    })
+                    if(resp.data.register_without_password.type === 'success'){
+                        auth.is_send_otp = true
+                    }
+                }
+            },
+            verifyOTP: async ()=>{
+                if (!auth.otp.match( /^\d{6}$/)) {
+                    alertify.error("OTP not proper Eg: 123456");
+                }else{
+                    let resp = await g90Client(`mutation MyMutation($otp: String = "", $phone: String = "") {
+                                                  verify_otp(request: {otp: $otp, phone: $phone}) {
+                                                    auth_token
+                                                    id
+                                                    type
+                                                  }
+                                                }`,{
+                        otp: auth.otp,
+                        phone: auth.phone
+                    })
+                    if(resp.data.verify_otp.type === 'success'){
+                        alertify.success('Signed In');
+                        localStorage.setItem("auth_token",resp.data.verify_otp.auth_token);
+                        if (_GET.redirect!==null && _GET.redirect!==undefined) window.location.href = _GET.redirect;
+                        else window.location.href = "./";
+                    }
+                }
+            },
+        }, mounted: function () {
+            this.$nextTick(function () {
+                this.loadTestData();
+            })
+        }
+    });
+</script>

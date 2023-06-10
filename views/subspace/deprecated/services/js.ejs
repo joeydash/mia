@@ -1,0 +1,128 @@
+<script>
+    let services = new Vue({
+        el: "#services",
+        data: {
+            title: "Services",
+            query_item: "whatsub_services",
+            query: `query MyQuery {
+                      whatsub_services(order_by: {service_name: asc}, where: {}) {
+                        id
+                        service_name
+                        url
+                        play_store_url
+                        status
+                        image_url
+                        whatsub_class {
+                          id
+                          name
+                        }
+                        whatsub_plans_aggregate {
+                          aggregate {
+                            count(columns: id)
+                          }
+                        }
+                      }
+                    }`,
+            heads: [
+                {
+                    key: "id",
+                    name: "Id",
+                    type: "string",
+                    search_text: "",
+                    isPrimaryKey: true
+                }, {
+                    key: "service_name",
+                    name: "Name",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    canEdit: true
+                },
+                {
+                    key: "status",
+                    name: "Status",
+                    type: "option",
+                    search_text: "",
+                    showInList: true,
+                    loadOptionsFrom: ["active", "inactive"],
+                    canEdit: true
+                },
+                {
+                    key: "class",
+                    name: "Class",
+                    type: "option",
+                    search_text: "",
+                    showInList: true,
+                    loadOptionsFrom: "whatsub_class",
+                    nested_key: ["whatsub_class", "name"]
+                },
+                {
+                    key: "plans_count",
+                    name: "Number of Plans",
+                    type: "number",
+                    search_text: "",
+                    showInList: true,
+                    nested_key: ["whatsub_plans_aggregate", "aggregate", "count"],
+                    link: {
+                        type: "redirect"
+                    }
+                },
+                {
+                    key: "url",
+                    name: "Website",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    link: {
+                        type: "redirect"
+                    },
+                    canEdit: true
+                },
+                {
+                    key: "play_store_url",
+                    name: "Play Store Link",
+                    type: "string",
+                    search_text: "",
+                    canEdit: true
+                }
+            ],
+            filters: [
+                {
+                    key: "id",
+                    match_type: "_eq",
+                    data_type: "string"
+                }
+            ],
+            mutation: `mutation MyMutation($service_name: String = "", $status: String = "", $url: String = "", $play_store_url: String = "", $id: uuid = "") {
+                          update_whatsub_services(_set: {service_name: $service_name, status: $status, url: $url, play_store_url: $play_store_url}, where: {id: {_eq: $id}}) {
+                            affected_rows
+                          }
+                        }`,
+            mutation_item: "update_whatsub_services",
+            env: "<% if (locals.env){ %><%- env %><% } %>"
+        },
+        methods: {
+            clickedItem: function (item) {
+                // console.log(item);
+                this.$refs.editorComponent.openModal(item);
+            },
+            handleSave: function () {
+                this.$refs.tableComponent.loadData();
+            },
+            loadTestData: () => {
+                // auth.phone = auth.env !=='prod'?"9435840783":"";
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+        },
+    });
+</script>

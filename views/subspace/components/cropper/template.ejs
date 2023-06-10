@@ -1,0 +1,42 @@
+<div class="container">
+    <div class="modal fade" id="cropperModal" tabindex="-1" aria-labelledby="cropperModalLabel" aria-hidden="true"
+         style="z-index: 2000;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cropperModalLabel"><b>Image Handler</b></h5>
+                    <button type="button" class="btn-close" aria-label="Close" @click="closeModal"></button>
+                </div>
+                <div class="modal-body" style="overflow-y: auto;max-height: 80vh;">
+                    <div class="img-container">
+                        <img id="cropperModalImage" :src="imageSource" alt="Picture"
+                             style="width: 100%;">
+                        <input id="input-file" class="upload-image" @change="openImage" type="file" name="avatar"
+                               accept="image/jpeg, image/png" style="display: none;">
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div>
+                        <button v-if="!cropperOptions.onlyShow" type="button" class="btn btn-dark" @click="r45">
+                            R45
+                        </button>
+                        <button v-if="!cropperOptions.onlyShow" type="button" class="btn btn-dark" @click="hf">
+                            HF
+                        </button>
+                        <button v-if="!cropperOptions.onlyShow" type="button" class="btn btn-dark" @click="vf">
+                            VF
+                        </button>
+                    </div>
+                    <div>
+                        <button v-if="!cropperOptions.onlyShow" type="button" class="btn btn-dark" @click="uploadData">
+                            Upload
+                        </button>
+                        <button type="button" class="btn btn-secondary" @click="closeModal">Close</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>

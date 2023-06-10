@@ -1,0 +1,91 @@
+<div class="container">
+    <div class="modal fade" id="editorModal" tabindex="-1" aria-labelledby="editorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editorModalLabel"><b>{{title}}</b></h5>
+                    <button type="button" class="btn-close" aria-label="Close" @click="closeModal"
+                            v-if="!isLoading"></button>
+                    <div class="spinner-grow text-dark" role="status" v-if="isLoading">
+                        <span class="sr-only"></span>
+                    </div>
+                </div>
+                <div class="modal-body" style="overflow-y: auto;max-height: 80vh;">
+                    <div @keyup.enter="handleSave">
+                        <div class="mb-3" v-for="head in heads">
+                            <label :for="head.key" class="form-label" v-if="!head.hideInEdit && head.type!=='qr'">{{head.name}}</label>
+                            <div v-if="head.type==='qr' && item[head.key]!==undefined">
+                                <center>
+                                    <button type="button"
+                                            class="btn btn-outline-primary mb-4"
+                                            @click="renderQR(head, item[head.key])">Show QR
+                                    </button>
+                                    <div :id="'qrcode_'+head.key"></div>
+                                </center>
+                            </div>
+                            <input type="text" class="form-control" :id="head.key"
+                                   aria-describedby="emailHelp"
+                                   v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.type!=='boolean' && head.canEdit && !head.hideInEdit"
+                                   v-model="item[head.key]">
+                            <input type="text" class="form-control" :id="head.key"
+                                   aria-describedby="emailHelp"
+                                   v-if="!head.canEdit && head.type!=='object' && head.type!=='text' && head.type!=='boolean' && head.type!=='qr' && !head.hideInEdit"
+                                   v-model="item[head.key]" readonly>
+
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData && !head.hideInEdit"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="uploadImage(head, item[head.key])">Upload
+                                Image
+                            </button>
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData && !head.hideInEdit"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="uploadImage(head, item[head.key], true)">Upload From URL
+                            </button>
+                            <button v-if="head.type!=='option' && head.type!=='object' && head.type!=='text' && head.canEdit && head.uploadImageData && !head.hideInEdit"
+                                    type="button" class="btn btn-outline-dark btn-sm mt-2"
+                                    @click="openImage(head, item[head.key])">Show Image
+                            </button>
+
+                            <textarea v-if="head.type==='object' && !head.hideInEdit" class="form-control" rows="10"
+                                      :aria-label="jsonStringify(item[head.key])"
+                                      readonly>{{jsonStringify(item[head.key])}}</textarea>
+                            <textarea v-if="!head.canEdit  && head.type==='text' && !head.hideInEdit"
+                                      v-model="item[head.key]" rows="10"
+                                      class="form-control"
+                                      :aria-label="jsonStringify(item[head.key])"
+                                      readonly>{{jsonStringify(item[head.key])}}</textarea>
+                            <textarea v-if="head.canEdit  && head.type==='text' && !head.hideInEdit"
+                                      v-model="item[head.key]" rows="10"
+                                      class="form-control"
+                                      :aria-label="jsonStringify(item[head.key])"></textarea>
+
+
+                            <select class="form-select" aria-label="Default select example"
+                                    v-if="(head.type==='option' || head.type==='boolean') && head.canEdit"
+                                    v-model="item[head.key]">
+                                <option selected disabled>Select {{head.name}}</option>
+                                <option v-for="option in head.loadOptionsFrom" :value="option">{{option}}</option>
+                                <option v-if="head.loadOptionsFromObjects" v-for="option in head.loadOptionsFromObjects"
+                                        :value="option.value">{{option.name}}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button v-for="dialog_action in dialog_actions" v-if="showIf(dialog_action)" type="button"
+                            class="btn btn-secondary" :class="'btn-'+dialog_action.buttonType"
+                            @click="handleDialogAction(dialog_action)" :disabled='isLoading'>{{dialog_action.name}}
+                    </button>
+                    <button type="button" class="btn btn-dark" @click="handleSave" v-if="save_actions.length>0"
+                            :disabled='isLoading'>
+                        Save
+                    </button>
+                    <button type="button" class="btn btn-secondary" @click="closeModal" :disabled='isLoading'>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,10 @@
+<% include css.ejs %>
+<div id="services">
+    <navbar-app></navbar-app>
+    <editor-component :title="title" :heads="heads" :save_actions="saveActions" :mutation="mutation" :mutation_item="mutation_item" ref="editorComponent" @handle-save="handleSave"></editor-component>
+    <table-component :title="title" :query="query" :query_item="query_item" :heads="heads" :filters="filters" ref="tableComponent"
+                     @clicked-item="clickedItem"></table-component>
+    <footer-app></footer-app>
+</div>
+<% include js.ejs %>
+

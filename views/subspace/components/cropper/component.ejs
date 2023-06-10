@@ -1,0 +1,71 @@
+<script>
+    let globalCropperOptions = {};
+    let cropperComponent = {
+        template: `<% include template.ejs %>`,
+        props: {},
+        data: function () {
+            return {
+                imageSource: "",
+                afterUpload: function () {
+                },
+                cropperOptions: {}
+            };
+        },
+        methods: {
+            openImage: function (event) {
+                this.imageSource = URL.createObjectURL(event.target.files[0]);
+                this.myModal.show();
+            },
+            openModal: function (afterUpload, cropperOptions = {onlyShow: false, options: {}}) {
+                this.afterUpload = afterUpload;
+                this.cropperOptions = cropperOptions;
+                globalCropperOptions = cropperOptions;
+                if (this.cropperOptions.onlyShow) {
+                    this.imageSource = this.cropperOptions.imageSource;
+                    this.myModal.show();
+                } else {
+                    if (this.cropperOptions.imageSource) {
+                        this.imageSource = this.cropperOptions.imageSource;
+                        this.myModal.show();
+                    } else document.getElementById("input-file").click();
+                }
+            },
+            uploadData: function () {
+                this.afterUpload(document.getElementById("cropperModalImage").cropper.getCroppedCanvas({
+                    maxWidth: 500,
+                }).toDataURL('image/png'));
+                this.closeModal();
+            },
+            r45: function () {
+                document.getElementById("cropperModalImage").cropper.rotate(45);
+            },
+            hf: function () {
+                if (document.getElementById("cropperModalImage").cropper.getData().scaleX === -1)
+                    document.getElementById("cropperModalImage").cropper.scaleX(1);
+                else document.getElementById("cropperModalImage").cropper.scaleX(-1);
+            },
+            vf: function () {
+                if (document.getElementById("cropperModalImage").cropper.getData().scaleY === -1)
+                    document.getElementById("cropperModalImage").cropper.scaleY(1);
+                else document.getElementById("cropperModalImage").cropper.scaleY(-1);
+            },
+            closeModal: function () {
+                this.myModal.hide();
+                this.imageSource = "";
+                if (document.getElementById("cropperModalImage").cropper) document.getElementById("cropperModalImage").cropper.destroy();
+            },
+        },
+        mounted: function () {
+            this.$nextTick(function () {
+                this.myModalEl = document.getElementById('cropperModal');
+                this.myModal = new bootstrap.Modal(this.myModalEl, {
+                    keyboard: false,
+                    backdrop: "static"
+                });
+                this.myModalEl.addEventListener('shown.bs.modal', function (event) {
+                    if (!globalCropperOptions.onlyShow && !document.getElementById("cropperModalImage").cropper) new Cropper(document.getElementById('cropperModalImage'), globalCropperOptions.options);
+                });
+            })
+        }
+    };
+</script>

@@ -1,0 +1,120 @@
+<script>
+    let modalComponent = {
+        template: `<% include template.ejs %>`,
+        props: {
+            component_id: {
+                type: String
+            }
+        },
+        data: function () {
+            return {
+                topButtonData: {
+                    name: "Some Action",
+                },
+                dialog_actions: [],
+                heads: [],
+                originalItem: {},
+                item: {},
+                isLoading: false
+            };
+        },
+        methods: {
+            jsonStringify: function (object) {
+                return JSON.stringify(object, null, "\t");
+            },
+            openModal: function (inputData) {
+                this.topButtonData = inputData;
+                // TODO use promise all and set isLoading to false when all are done
+                _.forEach(inputData.input, async (item, key) => {
+                    if (item.loadOptionsFromObjectsQuery) {
+                        item.loadOptionsFromObjects = _.map((await g90Client(item.loadOptionsFromObjectsQuery)).data.whatsub_class, (item) => {
+                            return {
+                                value: item.id,
+                                name: item.name
+                            }
+                        });
+                    }
+                });
+                this.originalItem = _.reduce(inputData.input, (result, item, key) => {
+                    this.item[item.key] === undefined ? result[item.key] = item.defaultValue === undefined ? null : item["defaultValue"] : result[item.key] = this.item[item.key];
+                    return result;
+                }, {});
+                this.item = Object.assign({}, this.originalItem);
+                this.myModal.show();
+            },
+            closeModal: function (item) {
+                // console.log(item);
+                // this.myModal.hide();
+                if (JSON.stringify(this.item) === JSON.stringify(this.originalItem)) this.myModal.hide();
+                else alertify.confirm('Discard Changed', 'Are you sure you want to discard the changes?', () => this.myModal.hide(), () => {
+                });
+            },
+            isChanged: function (oldItem, newItem, keys) {
+                return _.reduce(_.map(keys, i => oldItem[i] !== newItem[i]), (s, n) => (s || n), false);
+                // return _.map(keys, i=>oldItem[i]!==newItem[i]);
+            },
+            handleDialogAction: async function (dialog_action) {
+                this.isLoading = true;
+                await Promise.all(dialog_action.allMutations.map(async (i) => {
+                    let mutationResponse = await g90Client(i.mutation, _.pick(this.item, i.keys));
+                    if (!mutationResponse.data) alertify.error(mutationResponse.errors[0].message);
+                    else if (mutationResponse.data[i.mutation_item].affected_rows > 0) {
+                        alertify.success(makeHead(i.mutation_item) + " Done!");
+                        await g90Client(`mutation MyMutation($change: String = "", $new_item: jsonb = "", $old_item: jsonb = "", $user_id: uuid = "", $query: String = "", $changes: jsonb = "") {
+                                          insert_admin_dashboard_logs(objects: {change: $change, new_item: $new_item, old_item: $old_item, user_id: $user_id, query: $query, changes: $changes}) {
+                                            affected_rows
+                                          }
+                                        }`, {
+                            user_id: localStorage.getItem('user_id'),
+                            change: i.mutation_item,
+                            query: i.mutation,
+                            old_item: _.pick(this.originalItem, i.keys),
+                            new_item: _.pick(this.item, i.keys),
+                            changes: difference(_.pick(this.originalItem, i.keys), _.pick(this.item, i.keys))
+                        });
+                    }
+                }));
+                this.isLoading = false;
+                this.$emit('handle-dialog-action');
+                this.myModal.hide();
+            },
+            uploadImage: function (head, imageSource, fromURL = false) {
+                let componentInstance = this;
+                this.$emit('handle-open-cropper', async function (data) {
+                    try {
+                        componentInstance.isLoading = true;
+                        const result = await g90Client(`mutation MyMutation($data: String = "", $destinationFolder: jsonb = "", $user_id: uuid = "") {
+                              whatsubUploadImageDynamic(request: {data: $data, destinationFolder: $destinationFolder, user_id: $user_id}) {
+                                url
+                              }
+                            }`, {
+                            user_id: localStorage.getItem('user_id'),
+                            destinationFolder: head.uploadImageData.destinationFolder,
+                            data: data
+                        });
+                        if (result.data.whatsubUploadImageDynamic.url) componentInstance.item[head.key] = result.data.whatsubUploadImageDynamic.url;
+                        else alertify.error("Error Uploading Image --- Maybe Image is too big");
+                        componentInstance.isLoading = false;
+                    } catch (e) {
+                        alertify.error("Error Uploading Image --- Maybe Image is too big");
+                        componentInstance.isLoading = false;
+                    }
+                }, _.merge(head.uploadImageData.cropperOptions, {
+                    imageSource: fromURL ? imageSource : "",
+                }));
+            },
+            openImage: function (head, imageSource) {
+                this.$emit('handle-open-cropper', function (data) {
+                }, {imageSource: imageSource, onlyShow: true});
+            }
+        },
+        mounted: function () {
+            this.$nextTick(function () {
+                this.myModal = new bootstrap.Modal(document.getElementById('modalModal'), {
+                    keyboard: false,
+                    backdrop: "static"
+                });
+            })
+        }
+    };
+</script>

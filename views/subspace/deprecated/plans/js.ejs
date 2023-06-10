@@ -1,0 +1,108 @@
+<script>
+    let services = new Vue({
+        el: "#services",
+        data: {
+            title: "Plans",
+            query_item: "whatsub_plans",
+            query: `query MyQuery {
+                      whatsub_plans(where: {}, order_by: {plan_name: asc}) {
+                        id
+                        whatsub_service{
+                          service_name
+                        }
+                        plan_name
+                        price
+                        accounts
+                        status
+                      }
+                    }`,
+            heads: [
+                {
+                    key: "id",
+                    name: "Id",
+                    type: "string",
+                    search_text: "",
+                    isPrimaryKey: true
+                },
+                {
+                    key: "service",
+                    name: "Service",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    loadOptionsFrom: "whatsub_class",
+                    nested_key: ["whatsub_service", "service_name"]
+                },
+                {
+                    key: "plan_name",
+                    name: "Name",
+                    type: "string",
+                    search_text: "",
+                    showInList: true,
+                    canEdit: true
+                },
+                {
+                    key: "price",
+                    name: "Price",
+                    type: "number",
+                    search_text: "",
+                    showInList: true,
+                    canEdit: true
+                },                {
+                    key: "accounts",
+                    name: "Accounts",
+                    type: "number",
+                    search_text: "",
+                    showInList: true,
+                    canEdit: true
+                },
+                {
+                    key: "status",
+                    name: "Status",
+                    type: "option",
+                    search_text: "",
+                    showInList: true,
+                    loadOptionsFrom: ["active", "inactive"],
+                    canEdit: true
+                }
+            ],
+            filters: [
+                {
+                    key: "service_id",
+                    match_type: "_eq",
+                    data_type: "string"
+                }
+            ],
+            mutation: `mutation MyMutation($accounts: bigint = "", $plan_name: String = "", $price: float8 = "", $status: String = "", $id: uuid = "") {
+                          update_whatsub_plans(_set: {accounts: $accounts, plan_name: $plan_name, mrp_price: $price, status: $status}, where: {id: {_eq: $id}}) {
+                            affected_rows
+                          }
+                        }`,
+            mutation_item: "update_whatsub_plans",
+            env: "<% if (locals.env){ %><%- env %><% } %>"
+        },
+        methods: {
+            clickedItem: function (item) {
+                // console.log(item);
+                this.$refs.editorComponent.openModal(item);
+            },
+            handleSave: function (){
+                this.$refs.tableComponent.loadData();
+            },
+            loadTestData: () => {
+                // auth.phone = auth.env !=='prod'?"9435840783":"";
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+        },
+    });
+</script>

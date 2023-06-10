@@ -1,0 +1,29 @@
+<script>
+    let app = new Vue({
+        el: "#app",
+        <% if (locals.jsData){ %><%-jsData.data %><% } %>
+        methods: {
+            clickedItem: function (item) {
+                // console.log(item);
+                this.$refs.editorComponent.openModal(item);
+            },
+            handleSave: function () {
+                // this.$refs.tableComponent.loadData();
+            },
+            loadTestData: () => {
+            }
+        }, mounted: function () {
+            this.$nextTick(function () {
+
+                // this.loadTestData();
+            })
+        },
+        components: {
+            navbarApp: navbarApp,
+            footerApp: footerApp,
+            tableComponent: tableComponent,
+            editorComponent: editorComponent,
+            tableHeaderApp: tableHeaderApp,
+        },
+    });
+</script>

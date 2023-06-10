@@ -1,0 +1,163 @@
+<script>
+    let editorComponent = {
+        template: `<% include template.ejs %>`,
+        props: {
+            component_id: {
+                type: String
+            },
+            title: {
+                type: String
+            },
+            save_actions: {
+                type: Object
+            },
+            dialog_actions: {
+                type: Object
+            },
+            heads: {
+                type: Object
+            }
+        },
+        data: function () {
+            return {
+                originalItem: {},
+                item: {},
+                isLoading: false,
+                qrCodes: {}
+            };
+        },
+        methods: {
+            jsonStringify: function (object) {
+                return JSON.stringify(object, null, "\t");
+            },
+            renderQR: function (head, data) {
+                this.qrCodes[head.key] = new QRCode('qrcode_' + head.key, {
+                    text: data,
+                    // width: 128,
+                    // height: 128,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.Q
+                });
+            },
+            openModal: function (item) {
+                _.forEach(this.heads, async (item, key) => {
+                    if (item.loadOptionsFromObjectsQuery) {
+                        item.loadOptionsFromObjects = _.map((await g90Client(item.loadOptionsFromObjectsQuery)).data.whatsub_class, (options) => {
+                            return {
+                                value: options[item.loadOptionsFromObjectsQueryValue],
+                                name: options[item.loadOptionsFromObjectsQueryName]
+                            }
+                        });
+                    }
+                });
+                this.originalItem = Object.assign({}, item);
+                this.item = item;
+                this.myModal.show();
+                Object.keys(this.qrCodes).forEach(item => {
+                    document.getElementById('qrcode_' + item).innerHTML = '';
+                });
+                this.qrCodes = {};
+            },
+            closeModal: function (item) {
+                this.myModal.hide();
+                // if (JSON.stringify(this.item) === JSON.stringify(this.originalItem)) this.myModal.hide();
+                // else alertify.confirm('Discard Changed', 'Are you sure you want to discard the changes?', () => this.myModal.hide(), () => {
+                // });
+            },
+            isChanged: function (oldItem, newItem, keys) {
+                return _.reduce(_.map(keys, i => oldItem[i] !== newItem[i]), (s, n) => (s || n), false);
+                // return _.map(keys, i=>oldItem[i]!==newItem[i]);
+            },
+            handleDialogAction: async function (dialog_action) {
+                this.isLoading = true;
+                await Promise.all(dialog_action.allMutations.map(async (i) => {
+                    let mutationResponse = await g90Client(i.mutation, _.pick(this.item, i.keys));
+                    if (!mutationResponse.data) alertify.error(mutationResponse.errors[0].message);
+                    else if (mutationResponse.data[i.mutation_item].affected_rows > 0) {
+                        alertify.success(makeHead(i.mutation_item) + " Done!");
+                        await g90Client(`mutation MyMutation($change: String = "", $new_item: jsonb = "", $old_item: jsonb = "", $user_id: uuid = "", $query: String = "", $changes: jsonb = "") {
+                                          insert_admin_dashboard_logs(objects: {change: $change, new_item: $new_item, old_item: $old_item, user_id: $user_id, query: $query, changes: $changes}) {
+                                            affected_rows
+                                          }
+                                        }`, {
+                            user_id: localStorage.getItem('user_id'),
+                            change: i.mutation_item,
+                            query: i.mutation,
+                            old_item: _.pick(this.originalItem, i.keys),
+                            new_item: _.pick(this.item, i.keys),
+                            changes: difference(_.pick(this.originalItem, i.keys), _.pick(this.item, i.keys))
+                        });
+                    }
+                }));
+                this.isLoading = false;
+                this.$emit('handle-dialog-action');
+                this.myModal.hide();
+            },
+            handleSave: async function () {
+                this.isLoading = true;
+                await Promise.all(this.save_actions.map(async (i) => {
+                    if (this.isChanged(this.originalItem, this.item, i.keys)) {
+                        let mutationResponse = await g90Client(i.mutation, _.pick(this.item, i.keys));
+                        if (!mutationResponse.data) alertify.error(mutationResponse.errors[0].message);
+                        else if (mutationResponse.data[i.mutation_item].affected_rows > 0) {
+                            alertify.success(makeHead(i.mutation_item) + " Done!");
+                            await g90Client(`mutation MyMutation($change: String = "", $new_item: jsonb = "", $old_item: jsonb = "", $user_id: uuid = "", $query: String = "", $changes: jsonb = "") {
+                                              insert_admin_dashboard_logs(objects: {change: $change, new_item: $new_item, old_item: $old_item, user_id: $user_id, query: $query, changes: $changes}) {
+                                                affected_rows
+                                              }
+                                            }`, {
+                                user_id: localStorage.getItem('user_id'),
+                                change: i.mutation_item,
+                                query: i.mutation,
+                                old_item: _.pick(this.originalItem, i.keys),
+                                new_item: _.pick(this.item, i.keys),
+                                changes: difference(_.pick(this.originalItem, i.keys), _.pick(this.item, i.keys))
+                            });
+                        }
+                    }
+                }));
+                this.isLoading = false;
+                this.$emit('handle-save');
+                this.myModal.hide();
+            },
+            showIf: function (dialog_action) {
+                return (dialog_action.showIf) ? dialog_action.showIf(this.item) : true;
+            },
+            uploadImage: function (head, imageSource, fromURL = false) {
+                let componentInstance = this;
+                this.$emit('handle-open-cropper', async function (data) {
+                    try {
+                        componentInstance.isLoading = true;
+                        const result = await g90Client(`mutation MyMutation($data: String = "", $destinationFolder: jsonb = "", $user_id: uuid = "") {
+                              whatsubUploadImageDynamic(request: {data: $data, destinationFolder: $destinationFolder, user_id: $user_id}) {
+                                url
+                              }
+                            }`, {
+                            user_id: localStorage.getItem('user_id'),
+                            destinationFolder: head.uploadImageData.destinationFolder,
+                            data: data
+                        });
+                        if (result.data.whatsubUploadImageDynamic.url) componentInstance.item[head.key] = result.data.whatsubUploadImageDynamic.url;
+                        else alertify.error("Error Uploading Image --- Maybe Image is too big");
+                        componentInstance.isLoading = false;
+                    } catch (e) {
+                        alertify.error("Error Uploading Image --- Maybe Image is too big");
+                        componentInstance.isLoading = false;
+                    }
+                }, _.merge(head.uploadImageData.cropperOptions, {
+                    imageSource: fromURL ? imageSource : "",
+                }));
+            },
+            openImage: function (head, imageSource) {
+                this.$emit('handle-open-cropper', function (data) {
+                }, {imageSource: imageSource, onlyShow: true});
+            }
+        },
+        mounted: function () {
+            this.$nextTick(function () {
+                this.myModal = new bootstrap.Modal(document.getElementById('editorModal'));
+            })
+        }
+    };
+</script>

@@ -1,0 +1,19 @@
+<script>
+    let tableHeaderApp = {
+        template: `<% include template.ejs %>`,
+        props: {
+            title: {
+                type: String
+            },
+        },
+        data: function () {
+            return {};
+        },
+        methods: {},
+        mounted: function () {
+            this.$nextTick(function () {
+                console.log(this.title)
+            })
+        }
+    };
+</script>

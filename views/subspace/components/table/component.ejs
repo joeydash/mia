@@ -1,0 +1,319 @@
+<script>
+    let tableComponent = {
+        template: `<% include template.ejs %>`,
+        props: {
+            component_id: {
+                type: String
+            },
+            title: {
+                type: String
+            },
+            top_buttons: {
+                type: Object
+            },
+            query: {
+                type: String
+            },
+            query_item: {
+                type: String
+            },
+            heads: {
+                type: Object
+            },
+            filters: {
+                type: Object
+            },
+            sorts: {
+                type: Object
+            }
+
+        },
+        data: function () {
+            return {
+                fullData: [],
+                data: [],
+                sortBy: [],
+                filterBy: [],
+                isLoading: true,
+                limit: 100,
+                offset: 0,
+                showLimitOffset: false,
+                keyupTime: new Date(),
+                networkFilter: {}
+            };
+        },
+        methods: {
+            onLimitButtonChange: function (e) {
+                this.loadData();
+            },
+            buttonPrevNext: function (increment = 0) {
+                this.offset = this.offset + (this.limit * increment);
+                this.offset = this.offset < 0 ? 0 : this.offset;
+                this.loadData();
+            },
+            downloadXlSX: function () {
+                let data = this.data;
+                let opts = [{sheetid: 'One', header: true}];
+                let res = alasql('SELECT * INTO XLSX("' + this.query_item + '.xlsx",?) FROM ?',
+                    [opts, [data]]);
+            },
+            onTopButtonClick: function (item) {
+                this.$emit('top-button-click', item, this.component_id);
+            },
+            getQuery: function () {
+                let urlFilters = {};
+                let filters = this.networkFilter;
+                if (this.filters.length > 0) {
+                    _.forEach(this.filters, (item) => {
+                        if (_GET[item.key] !== null && _GET[item.key] !== undefined && (item.data_type === "string" || item.data_type === "uuid" || item.data_type === 'boolean')) {
+                            urlFilters[item.key] = {[item.match_type]: _GET[item.key]};
+                        }
+                    });
+                    if (Object.keys(urlFilters).length > 0) {
+                        _.forEach(this.filters, (item) => {
+                            if (_GET[item.key] !== null && _GET[item.key] !== undefined && (item.data_type === "string" || item.data_type === "uuid" || item.data_type === 'boolean') && filters[item.key] === undefined) {
+                                filters[item.key] = {[item.match_type]: _GET[item.key]};
+                            }
+                        });
+                    }
+                }
+                if (/where\s*:\s*{\s*}/gm.test(this.query)) return this.query.replace(/where\s*:\s*{\s*}/gm, "where: " + JSON.stringify(filters).replace(/"([^"]+)":/g, '$1:'));
+                else return this.query;
+            },
+            getQueryWithLimitAndOffset: function (query) {
+                if (/\s*limit:\s*\d+\s*/gm.test(query) && /\s*offset:\s*\d+\s*/gm.test(query)) {
+                    this.showLimitOffset = true;
+                    return query.replace(/limit\s*:\s*\d+/gm, 'limit: ' + this.limit).replace(/offset\s*:\s*\d+/gm, 'offset: ' + this.offset);
+                } else return query;
+            },
+            getSortObjectFromNestedKey: function (value, nested_key, sortBy = {}) {
+                if (nested_key.length === 0) return value;
+                else {
+                    sortBy[nested_key[0]] = this.getSortObjectFromNestedKey(value, nested_key.slice(1), sortBy[nested_key[0]] ? sortBy[nested_key[0]] : {});
+                    return sortBy;
+                }
+            },
+            getSortObject: function (sorts) {
+                return _.reduce(sorts, (object, item) => {
+                    if (item.nested_key && item.nested_key.length > 0) {
+                        if (item.nested_key.length > 1) {
+                            object[item.nested_key[0]] = this.getSortObjectFromNestedKey(item.sort, item.nested_key.slice(1));
+                        } else object[item.nested_key[0]] = item.sort
+                    } else object[item.key] = item.sort;
+                    return object;
+                }, {});
+            },
+            getQueryWithOrderBy: function (query) {
+                if (this.sorts.length > 0) {
+                    this.sortBy = _.map(this.sorts, (item) => {
+                        let i = _.findIndex(this.heads, {key: item.key});
+                        if (i > 0) {
+                            item.nested_key = this.heads[i].nested_key;
+                            item.networkSort = this.heads[i].networkSort ? this.heads[i].networkSort : false;
+                        } else item.networkSort = true;
+                        return item;
+                    });
+                    this.sorts = [];
+                }
+                if (this.sortBy.length > 0) {
+                    if (/order_by\s*:\s*{\s*}/gm.test(query)) return query.replace(/order_by\s*:\s*{\s*}/gm, "order_by: " + JSON.stringify(this.getSortObject(_.filter(this.sortBy, (item) => {
+                        return item.networkSort;
+                    }))).replace(/"([^"]+)":/g, '$1:').replaceAll('"desc"', 'desc').replaceAll('"asc"', 'asc'));
+                    else return query;
+                } else return query;
+            },
+            loadData: async function () {
+                let resp = await g90Client(this.getQueryWithLimitAndOffset(this.getQueryWithOrderBy(this.getQuery())));
+                if (resp.data !== null && resp.data !== undefined) {
+                    if (resp.data[this.query_item].length > 0) {
+                        this.fullData = _.map(resp.data[this.query_item], (item) => {
+                            _.filter(this.heads, (o) => o.dataFunction).map(head => item[head.key] = head.dataFunction(item));
+                            _.filter(this.heads, (o) => o.nested_key).map(head => item[head.key] = this.getNestedDynamicObject(item, head.nested_key));
+                            return item;
+                        });
+                        this.data = this.fullData;
+                        this.filterData();
+                        this.isLoading = false;
+                    } else {
+                        this.fullData = [];
+                        this.data = this.fullData;
+                        this.isLoading = false;
+                    }
+                } else {
+                    this.fullData = [];
+                    this.data = this.fullData;
+                    this.isLoading = false;
+                    alertify.error(resp.errors[0].message);
+                }
+            }, getNestedFilter: function (value, nested_key, type = 'string', filter = {}) {
+                if (type === 'number') {
+                    if (nested_key.length === 0) return {_eq: parseFloat(value.trim())};
+                    else {
+                        filter[nested_key[0]] = this.getNestedFilter(value, nested_key.slice(1), type, filter[nested_key[0]] ? filter[nested_key[0]] : {});
+                        return filter;
+                    }
+                } else if (type === 'uuid') {
+                    if (nested_key.length === 0) return {_eq: value.trim()};
+                    else {
+                        filter[nested_key[0]] = this.getNestedFilter(value, nested_key.slice(1), type, filter[nested_key[0]] ? filter[nested_key[0]] : {});
+                        return filter;
+                    }
+                } else if (type === 'option') {
+                    if (nested_key.length === 0) return {_eq: value.trim()};
+                    else {
+                        filter[nested_key[0]] = this.getNestedFilter(value, nested_key.slice(1), type, filter[nested_key[0]] ? filter[nested_key[0]] : {});
+                        return filter;
+                    }
+                } else if (type === 'boolean') {
+                    if (nested_key.length === 0) return {_eq: JSON.parse(value.trim())};
+                    else {
+                        filter[nested_key[0]] = this.getNestedFilter(value, nested_key.slice(1), type, filter[nested_key[0]] ? filter[nested_key[0]] : {});
+                        return filter;
+                    }
+                } else {
+                    if (nested_key.length === 0) return {_ilike: "%" + value.trim() + "%"};
+                    else {
+                        filter[nested_key[0]] = this.getNestedFilter(value, nested_key.slice(1), type, filter[nested_key[0]] ? filter[nested_key[0]] : {});
+                        return filter;
+                    }
+                }
+            },
+            fetchFilteredData: function (event, head) {
+                if (!this.isLoading) {
+                    if (head.networkSearch) {
+                        this.isLoading = true;
+                        if (event.target.value === '') {
+                            if (this.networkFilter[head.nested_key ? head.nested_key[0] : head.key] !== undefined) {
+                                delete this.networkFilter[head.nested_key ? head.nested_key[0] : head.key];
+                                this.loadData();
+                            } else this.isLoading = false;
+                        } else {
+                            if (head.nested_key)
+                                this.networkFilter[head.nested_key[0]] = this.getNestedFilter(event.target.value, head.nested_key.slice(1), head.type, this.networkFilter[head.nested_key[0]] ? this.networkFilter[head.nested_key[0]] : {});
+                            else {
+                                if (head.type === 'number') this.networkFilter[head.key] = {_eq: parseFloat(event.target.value.trim())};
+                                else if (head.type === 'uuid') this.networkFilter[head.key] = {_eq: event.target.value.trim()};
+                                else if (head.type === 'option') this.networkFilter[head.key] = {_eq: event.target.value.trim()};
+                                else if (head.type === 'boolean') this.networkFilter[head.key] = {_eq: JSON.parse(event.target.value.trim())};
+                                else this.networkFilter[head.key] = {_ilike: "%" + event.target.value.trim() + "%"};
+                            }
+                            this.loadData();
+                        }
+                    } else {
+                        let ind = _.findIndex(this.filterBy, o => o.key === head.key);
+                        if (event.target.value === '') {
+                            if (ind >= 0) this.filterBy.splice(ind, 1);
+                        } else {
+                            if (ind >= 0) this.filterBy[ind].searchStr = event.target.value;
+                            else this.filterBy.push({
+                                key: head.key,
+                                objType: head.type,
+                                searchStr: event.target.value
+                            });
+                        }
+                        this.filterData();
+                    }
+                }
+
+            },
+            addFilterChar: function (event, head) {
+                if ([9, 16, 17, 18, 19, 27, 33, 34, 35, 36].indexOf(event.keyCode) >= 0) {
+                } else if (event.keyCode === 13) {
+                    if (this.tempTimeout) clearTimeout(this.tempTimeout);
+                    this.fetchFilteredData(event, head);
+                } else {
+                    if (this.tempTimeout) clearTimeout(this.tempTimeout);
+                    this.tempTimeout = setTimeout(() => {
+                        this.fetchFilteredData(event, head);
+                    }, 1000);
+                }
+            }, addSort: function (head) {
+                this.sortBy = _.filter(this.sortBy, item => _.map(_.filter(this.heads, item => item.showInList), "key").indexOf(item.key) >= 0);
+                let ind = _.findIndex(this.sortBy, o => o.key === head.key);
+                if (ind < 0) {
+                    this.sortBy.push({
+                        key: head.key,
+                        sort: 'asc',
+                        nested_key: head.nested_key,
+                        networkSort: head.networkSort ? head.networkSort : false
+                    });
+                } else if (this.sortBy[ind]['sort'] === 'asc') {
+                    this.sortBy[ind].sort = 'desc';
+                    this.sortBy[ind].nested_key = head.nested_key;
+                    this.sortBy[ind].networkSort = head.networkSort ? head.networkSort : false;
+                } else {
+                    this.sortBy.splice(ind, 1);
+                    return;
+                }
+                if (head.networkSort) {
+                    this.loadData();
+                } else this.sortData();
+            }, getWhetherSorted: function (key) {
+                let ind = _.findIndex(this.sortBy, o => o.key === key);
+                if (ind >= 0) return this.sortBy[ind]['sort'];
+            }, filterData: function () {
+                this.data = this.fullData;
+                _.forEach(this.filterBy, o => {
+                    if (o.searchStr === null) this.data = this.data.filter((obj) => obj[o.key] === o.searchStr);
+                    if (o.searchStr === undefined) this.data = this.data.filter((obj) => obj[o.key] === o.searchStr);
+                    else if (typeof o.searchStr == "boolean") this.data = this.data.filter((obj) => obj[o.key] === o.searchStr);
+                    else if (o.searchStr.length > 0) this.data = _.filter(this.data, (obj) => this.searchInObj(o.searchStr, o.key, obj, o.objType));
+                })
+                if (this.sortBy.length > 0) this.sortData();
+            }, sortData: function () {
+                this.data = _.orderBy(this.data, _.map(_.filter(this.sortBy, item => !item.networkSort), 'key'), _.map(_.filter(this.sortBy, item => !item.networkSort), 'sort'));
+            }, getNestedDynamicObject: function (object, paths) {
+                if (object[paths[0]] === null) return object[paths[0]];
+                else if (object[paths[0]] === undefined) return object[paths[0]];
+                else if (paths.length === 1) return object[paths[0]];
+                else return this.getNestedDynamicObject(object[paths[0]], paths.slice(1));
+            }, get_link: function (item, head) {
+                if (head.link !== undefined && head.link !== null) {
+                    if (head.link.pathFunction) return head.link.pathFunction(item);
+                    else if (/\b[a-z0-9-_.]+@[a-z0-9-_.]+(\.[a-z0-9]+)+/i.test(item[head.key])) return '<a href="mailto:' + item[head.key] + '" target="_blank">' + item[head.key] + '</a>';
+                    else if (new RegExp("([a-zA-Z0-9]+://)?([a-zA-Z0-9_]+:[a-zA-Z0-9_]+@)?([a-zA-Z0-9.-]+\\.[A-Za-z]{2,4})(:[0-9]+)?(/.*)?").test(item[head.key])) return '<a href="' + item[head.key] + '" target="_blank">' + item[head.key] + '</a>';
+                    else return item[head.key];
+                } else if (head.type === 'time' && item[head.key] !== "" && item[head.key] !== undefined && item[head.key] !== null) return moment(item[head.key]).format(head.timeFormat);
+                else return item[head.key];
+            },
+            searchObject: function (searchStr, key, objType = 'string') {
+                if (searchStr === null) this.data = this.fullData.filter((obj) => obj[key] === searchStr);
+                if (searchStr === undefined) this.data = this.fullData.filter((obj) => obj[key] === searchStr);
+                else if (typeof searchStr == "boolean") this.data = this.fullData.filter((obj) => obj[key] === searchStr);
+                else if (searchStr.length > 0) this.data = this.fullData.filter((obj) => this.searchInObj(searchStr, key, obj, objType));
+                else this.data = this.fullData;
+            },
+            searchInObj: function (str, key, obj, objType = 'string') {
+                if (obj[key] !== undefined && obj[key] !== null) {
+                    if (objType === 'option') return (obj[key].toString() === str);
+                    else if (typeof obj[key] === 'string' || obj[key] instanceof String) return (this.matchRuleShort(obj[key].toLowerCase(), "*" + str.toLowerCase() + "*"));
+                    else if (typeof obj[key] === 'number' || obj[key] instanceof Number) return (obj[key].toString() === str);
+                    else return false;
+                } else return false;
+            },
+            matchRuleShort: function (str, rule) {
+                return new RegExp("^" + rule.split("*").join(".*") + "$").test(str);
+            },
+            matchRuleExpl: function (str, rule) {
+                // "."  => Find a single character, except newline or line terminator
+                // ".*" => Matches any string that contains zero or more characters
+                rule = rule.split("*").join(".*");
+                // "^"  => Matches any string with the following at the beginning of it
+                // "$"  => Matches any string with that in front at the end of it
+                rule = "^" + rule + "$";
+                //Create a regular expression object for matching string
+                let regex = new RegExp(rule);
+                //Returns true if it finds a match, otherwise it returns false
+                return regex.test(str);
+            },
+            clickedItem: function (item) {
+                this.$emit('clicked-item', item, this.component_id);
+            }
+        },
+        mounted: function () {
+            this.$nextTick(function () {
+                this.loadData();
+            })
+        }
+    };
+</script>
