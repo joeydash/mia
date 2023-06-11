@@ -11,7 +11,7 @@ package-lock.json
 ./services/auth/node_modules
 ./services/cubetech/node_modules
 ./services/whatsapp/node_modules
-./node_modules
+node_modules
 ./.idea.DS_Store
 .DS_Store
 ./node_modules
