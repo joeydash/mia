@@ -2,8 +2,8 @@ const fetch = require('node-fetch');
 const _ = require('lodash');
 
 
-let mHasuraGraphqlUrl = "";
-let mHasuraAccessKey = "";
+let mHasuraGraphqlUrl = "https://db.grow90.org/v1/graphql";
+let mHasuraAccessKey = "KHk6kOAoI34IZGxILMKpH1geRR9PID8B7nvf6tm1JXiqnQFDz38DOsAn73xRN10ebKdIsenikNaA5kiuKPDM2i6lmENWcQmqgIT9TmNgRaa8Y0xbFtGGf0T60tJ2iTTv";
 
 let joeygql = {
     admin_client: async (query, variables = {}, headers = {}) => {
