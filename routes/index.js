@@ -179,7 +179,7 @@ let privateApp = {
           ${table_name}(order_by: {}, where: {}, limit: 100, offset: 0) {
             ${result.map(element => `\n    ${element.key}`).join('')}
           }
-        }`, heads: headers, saveActions: columnsToSave.length > 0 ? [{
+        }`, heads: headers,filters:[],sorts:[],saveActions: columnsToSave.length > 0 ? [{
                 keys: columnsToSave, mutation: mutation, mutation_item: `update_${table_name}`
             }] : []
         }]
