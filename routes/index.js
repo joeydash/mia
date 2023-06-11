@@ -148,7 +148,12 @@ let privateApp = {
             if (save !== undefined) {
                 delete element.save;
             }
-            headers.push(element)
+            let temp = { ...element }
+            if (element['type']=="String"){
+                temp['type'] = "string"
+            }
+            headers.push(temp)
+            // console.log(temp)
         }
     
         let mutation = "";
